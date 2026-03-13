@@ -14,8 +14,8 @@ return new class extends Migration
         Schema::create('gateways', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('is_active');
-            $table->string('priority');
+            $table->boolean('is_active');
+            $table->integer('priority');
         });
     }
 

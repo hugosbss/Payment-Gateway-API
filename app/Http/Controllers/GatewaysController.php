@@ -9,6 +9,8 @@ class GatewaysController extends Controller
 {
     public function activate(Gateway $gateway)
     {
+        $this->authorize('update', $gateway);
+
         $gateway->update(['is_active' => true]);
 
         return response()->json([
@@ -19,6 +21,8 @@ class GatewaysController extends Controller
 
     public function deactivate(Gateway $gateway)
     {
+        $this->authorize('update', $gateway);
+
         $gateway->update(['is_active' => false]);
 
         return response()->json([
@@ -29,6 +33,8 @@ class GatewaysController extends Controller
 
     public function priority(UpdateGatewayPriorityRequest $request, Gateway $gateway)
     {
+        $this->authorize('update', $gateway);
+
         $gateway->update($request->validated());
 
         return response()->json([

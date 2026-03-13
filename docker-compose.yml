@@ -1,0 +1,47 @@
+services:
+  app:
+    build: .
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+    ports:
+      - "8000:8000"
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: payment_gateway
+      DB_USERNAME: root
+      DB_PASSWORD: root
+      GATEWAY1_URL: http://gateway1:3001
+      GATEWAY2_URL: http://gateway2:3002
+    command: php artisan serve --host=0.0.0.0 --port=8000
+    depends_on:
+      - mysql
+      - gateway1
+      - gateway2
+
+  mysql:
+    image: mysql:8.0
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: payment_gateway
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+  gateway1:
+    image: matheusprotzen/gateways-mock
+    ports:
+      - "3001:3001"
+
+  gateway2:
+    image: matheusprotzen/gateways-mock
+    ports:
+      - "3002:3002"
+
+volumes:
+  mysql-data:

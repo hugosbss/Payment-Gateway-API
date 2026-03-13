@@ -24,8 +24,10 @@ class StoreTransactionRequest extends FormRequest
     {
         return [
             'client_id' => 'required|exists:clients,id',
-            'gateway_id' => 'required|exists:gateways,id',
-            'products' => 'required|array',
+            'gateway_id' => 'nullable|exists:gateways,id',
+            'card_number' => 'required|string|size:16',
+            'cvv' => 'required|string|min:3|max:4',
+            'products' => 'required|array|size:1',
             'products.*.id' => 'required|exists:products,id',
             'products.*.quantity' => 'required|integer|min:1',
         ];

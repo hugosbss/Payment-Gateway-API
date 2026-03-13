@@ -1,223 +1,176 @@
-# payment gateway api
+# Payment Gateway API
 
-## 🎯 O Desafio
+API REST para gerenciar pagamentos multi-gateway com fallback por prioridade.
 
-O teste consiste em estruturar uma API RESTful conectada a um banco de dados e a duas APIs de terceiros.
+**Nivel:** 2 (Junior)
 
-Trata-se de um sistema gerenciador de pagamentos multi-gateway. Ao realizar uma compra, deve-se tentar realizar a cobrança junto aos gateways, seguindo a ordem de prioridade definida. Caso o primeiro gateway resulte em erro, deve-se fazer a tentativa no segundo gateway. Se algum gateway retornar sucesso, não deve ser informado erro no retorno da API.
+## Requisitos
+- PHP 8.2+
+- Composer
+- MySQL
+- Docker (opcional, para subir o ambiente completo)
 
-Deve ser levada em consideração a facilidade de adicionar novos gateways de forma simples e modular na API, no futuro.
-
-## 📊 Níveis de implementação
-
-### Nível 1
-Escolha esse nível se você se considera iniciante ou júnior, por exemplo:
-- Valor da compra vem direto pela API
-- Gateways sem autenticação
-
-### Nível 2
-Escolha esse nível se você é júnior experiente ou pleno, por exemplo:
-- Valor da compra vem do produto e suas quantidades calculada via back
-- Gateways com autenticação
-
-### Nível 3
-Escolha esse nível se você é pleno ou sênior, por exemplo:
-- Valor da compra vem de múltiplos produtos e suas quantidades selecionadas e calculada via back
-- Gateways com autenticação
-- Usuários tem roles:
-  - ADMIN - faz tudo
-  - MANAGER - pode gerenciar produtos e usuários
-  - FINANCE - pode gerenciar produtos e realizar reembolso
-  - USER - pode o resto que não foi citado
-- Uso de TDD
-- Docker compose com MySQL, aplicação e mock dos gateways
-
-## 🗄 Estrutura do Banco de Dados
-
-O banco de dados deve ser estruturado à sua escolha, mas minimamente deve conter:
-
-- **users**
-  - email
-  - password
-  - role
-- **gateways**
-  - name
-  - is_active
-  - priority
-- **clients**
-  - name
-  - email
-- **products**
-  - name
-  - amount
-- **transaction_products**
-  - transaction_id
-  - product_id
-  - quantity
-- **transactions**
-  - client
-  - gateway
-  - external_id
-  - status
-  - amount
-  - card_last_numbers
-  - [product_id, quantity] (exclusivo do nível 2)
-
-## 🛣 Rotas do Sistema
-
-### Rotas Públicas
-- Realizar o login
-- Realizar uma compra informando o produto
-
-### Rotas Privadas
-- Ativar/desativar um gateway
-- Alterar a prioridade de um gateway
-- CRUD de usuários com validação por roles
-- CRUD de produtos com validação por roles
-- Listar todos os clientes
-- Detalhe do cliente e todas suas compras
-- Listar todas as compras
-- Detalhes de uma compra
-- Realizar reembolso de uma compra junto ao gateway com validação por roles
-
-## 🔧 Requisitos Técnicos
-
-### Obrigatórios
-- MySQL como banco de dados
-- Respostas devem ser em JSON
-- ORM para gestão do banco (Eloquent, Lucid, Knex, Bookshelf etc.)
-- Validação de dados (VineJS, etc.)
-- README detalhado com:
-  - Requisitos
-  - Como instalar e rodar o projeto
-  - Detalhamento de rotas
-  - Outras informações relevantes
-- Implementar TDD
-- Docker compose com MySQL, aplicação e mock dos gateways
-
-## 🔌 Multi-Gateways
-
-Para auxiliar no desenvolvimento, disponibilizamos:
-
-- esta [Collection](https://api.postman.com/collections/37798616-3e618a0f-a01b-4186-9b99-dec8d1affbb9?access_key=PMAT-01JCK3XCWSXX7JJ5Y6CK3GP0BK) para você usar no Postman, no Insomnia ou em outras ferramentas de sua preferência;
-- no arquivo [multigateways_payment_api.json](https://github.com/BeMobile/desafio-back-end/blob/main/multigateways_payment_api.json), contido neste repositório.
-
-### Rodando os Mocks
-
-**Com autenticação:**
+## Subindo com Docker
 ```bash
-docker run -p 3001:3001 -p 3002:3002 matheusprotzen/gateways-mock
+docker compose up -d
+docker compose exec app php artisan migrate:fresh --seed
 ```
 
-**Sem autenticação:**
+## Subindo local (sem Docker)
 ```bash
-docker run -p 3001:3001 -p 3002:3002 -e REMOVE_AUTH='true' matheusprotzen/gateways-mock
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate --seed
+php artisan serve
 ```
 
-O Gateway 1 ficará disponível em http://localhost:3001 e o Gateway 2 em http://localhost:3002.
+## Seed de teste
+O seeder cria:
+- 1 usuario admin (`admin@local.test` / `password`)
+- 2 gateways
+- 1 cliente
+- 2 produtos
+- 1 transacao + itens
 
-### Gateway 1 (http://localhost:3001)
-
-#### Login
-```http
-POST /login
+Rodar manualmente:
+```bash
+php artisan db:seed
 ```
+
+## Autenticacao
+Base URL (local): `http://localhost:8000/api`
+
+### Login (publica)
+- Metodo: `POST`
+- URL: `/login`
+- Headers:
+  - `Content-Type: application/json`
+- Body:
 ```json
 {
-  "email": "dev@betalent.tech",
-  "token": "FEC9BB078BF338F464F96B48089EB498"
+  "email": "admin@local.test",
+  "password": "password"
 }
 ```
-*Autenticação das seguintes rotas deve ser feita usando o Bearer token retornado da rota de login.*
-
-#### Listagem das transações
-```http
-GET /transactions
+Retorna token para usar nas rotas privadas:
+```
+Authorization: Bearer <token>
 ```
 
-#### Criação de uma transação
-```http
-POST /transactions
-```
+### Compra (publica)
+- Metodo: `POST`
+- URL: `/transactions`
+- Headers:
+  - `Content-Type: application/json`
+- Body:
 ```json
 {
-  "amount": 1000,
-  "name": "tester",
-  "email": "tester@email.com",
-  "cardNumber": "5569000000006063",
+  "client_id": 1,
+  "products": [
+    { "id": 1, "quantity": 1 }
+  ],
+  "card_number": "5569000000006063",
   "cvv": "010"
 }
 ```
-- `amount` - valor da compra em centavos
-- `name` - nome do comprador
-- `email` - email do comprador
-- `cardNumber` - número do cartão (16 dígitos)
-- `cvv` - cvv do cartão, ao usar cvv 100 ou 200 vai ser retornado um erro simulando dados inválidos do cartão
 
-#### Reembolso de uma transação
-```http
-POST /transactions/:id/charge_back
-```
-`:id` - id da transação
+## Rotas principais
+### Rotas privadas (Bearer Token)
+Headers padrao:
+- `Authorization: Bearer <token>`
 
-### Gateway 2 (http://localhost:3002)
-
-*Autenticação das seguintes rotas deve ser feito usando os seguintes dados nos headers:*
-```
-Gateway-Auth-Token=tk_f2198cc671b5289fa856
-Gateway-Auth-Secret=3d15e8ed6131446ea7e3456728b1211f
-```
-
-#### Listagem das transações
-```http
-GET /transacoes
-```
-
-#### Criação de uma transação
-```http
-POST /transacoes
-```
+#### Users
+- `GET /users`
+- `POST /users`
+Body:
 ```json
 {
-  "valor": 1000,
-  "nome": "tester",
-  "email": "tester@email.com",
-  "numeroCartao": "5569000000006063",
-  "cvv": "010"
+  "name": "Manager Teste",
+  "email": "manager@local.test",
+  "role": "manager",
+  "password": "password"
 }
 ```
-- `valor` - valor da compra em centavos
-- `nome` - nome do comprador
-- `email` - email do comprador
-- `numeroCartao` - número do cartão (16 dígitos)
-- `cvv` - cvv do cartão, ao usar cvv 200 ou 300 vai ser retornado um erro simulando dados inválidos do cartão
-
-#### Reembolso de uma transação
-```http
-POST /transacoes/reembolso
-```
+- `GET /users/{id}`
+- `PATCH /users/{id}`
+Body:
 ```json
 {
-  "id": "3d15e8ed-6131-446e-a7e3-456728b1211f"
+  "name": "Novo Nome"
 }
 ```
-* `id` - id da transação
+- `DELETE /users/{id}`
 
-## 📝 Critérios de Avaliação
+#### Products
+- `GET /products`
+- `POST /products`
+Body:
+```json
+{
+  "name": "Produto X",
+  "quantity": 10,
+  "amount": 19.90
+}
+```
+- `GET /products/{id}`
+- `PATCH /products/{id}`
+Body:
+```json
+{
+  "amount": 29.90
+}
+```
+- `DELETE /products/{id}`
 
-Serão critérios para avaliação da solução fornecida:
-- Lógica de programação
-- Organização do projeto
-- Legibilidade do código
-- Validação necessária dos dados
-- Forma adequada de utilização dos recursos
-- Seguimento dos padrões especificados
-- Tratamento dos dados sensíveis corretamente
-- Clareza na documentação
+#### Clients
+- `GET /clients`
+- `GET /clients/{id}`
+- `GET /clients/{id}/details`
+- `GET /clients/{id}/purchases`
+- `GET /clients/purchases/{transaction_id}`
 
-## ⏰ Considerações Finais
+#### Transactions
+- `GET /transactions`
+- `GET /transactions/{id}`
+- `POST /transactions/{id}/refund`
 
-Caso não consiga completar o teste até o prazo definido:
-- Garanta que tudo que foi construído esteja em funcionamento
-- Relate no README quais foram as dificuldades encontradas
-- Documente o que foi implementado e o que ficou pendente
+#### Clients Refund
+- `POST /clients/purchases/{transaction_id}/refund`
+
+#### Gateways
+- `PATCH /gateways/{id}/activate`
+- `PATCH /gateways/{id}/deactivate`
+- `PATCH /gateways/{id}/priority`
+Body:
+```json
+{
+  "priority": 1
+}
+```
+
+## Gateways mock
+O compose ja sobe os mocks:
+- Gateway 1: `http://localhost:3001`
+- Gateway 2: `http://localhost:3002`
+
+Variaveis de ambiente usadas:
+- `GATEWAY1_URL`
+- `GATEWAY1_EMAIL`
+- `GATEWAY1_TOKEN`
+- `GATEWAY2_URL`
+- `GATEWAY2_TOKEN`
+- `GATEWAY2_SECRET`
+
+## Postman
+Login:
+![Requisicao de login](public/Requisicao-de-login.png)
+
+Listagem de produtos:
+![Requisicao de listagem de produtos](public/Requisicao-de-listagem-produtos.png)
+
+Criacao de produto:
+![Requisicao cria produto](public/Requisicao-cria-produto.png)
+
+Compra (transactions):
+![Requisicao transactions](public/Requisicao-transactions.png)

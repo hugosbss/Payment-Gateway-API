@@ -20,7 +20,7 @@ return new class extends Migration
             $table->decimal('amount', 8, 2);
             $table->integer('card_last_numbers');
             $table->foreignId('product_id')->constrained()->onDelete('cascade');
-            $table->integer('quantity')->constrained()->onDelete('cascade');
+            $table->integer('quantity');
         });
     }
 

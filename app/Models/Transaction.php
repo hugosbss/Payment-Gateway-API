@@ -7,7 +7,18 @@ use Illuminate\Database\Eloquent\Model;
 
 class Transaction extends Model
 {
-    protected $fillable = ['client_id', 'gateway_id', 'amount'];
+    public $timestamps = false;
+
+    protected $fillable = [
+        'client_id',
+        'gateway_id',
+        'external_id',
+        'status',
+        'amount',
+        'card_last_numbers',
+        'product_id',
+        'quantity',
+    ];
 
     protected $casts = [
         'status' => TransactionStatus::class,

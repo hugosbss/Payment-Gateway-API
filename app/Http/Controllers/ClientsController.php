@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Client;
 use App\Models\Transaction;
+use App\Services\PaymentService;
 use App\TransactionStatus;
 
 class ClientsController extends Controller
@@ -59,7 +60,16 @@ class ClientsController extends Controller
     // Realizar reembolso de uma compra junto ao gateway com validação por roles
     public function refundPuchasedGateway(Transaction $transaction)
     {
-        $transaction->update(['status' => TransactionStatus::Failed]);
+        $paymentService = app(PaymentService::class);
+        $result = $paymentService->refund($transaction);
+
+        if ($result['status'] !== TransactionStatus::Refunded) {
+            return response()->json([
+                'message' => $result['error'] ?? 'Refund failed',
+            ], 502);
+        }
+
+        $transaction->update(['status' => TransactionStatus::Refunded]);
 
         return response()->json([
             'message' => 'Reembolso da compra do cliente realizado com sucesso',
