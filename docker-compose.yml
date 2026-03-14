@@ -1,6 +1,8 @@
 services:
   app:
-    build: .
+    build: 
+      context: .
+      dockerfile: Dockerfile
     working_dir: /var/www/html
     volumes:
       - ./:/var/www/html
@@ -14,14 +16,17 @@ services:
       DB_PORT: 3306
       DB_DATABASE: payment_gateway
       DB_USERNAME: root
-      DB_PASSWORD: root
+      DB_PASSWORD: ""
       GATEWAY1_URL: http://gateway1:3001
       GATEWAY2_URL: http://gateway2:3002
     command: php artisan serve --host=0.0.0.0 --port=8000
     depends_on:
-      - mysql
-      - gateway1
-      - gateway2
+      mysql:
+        condition: service_healthy
+      gateway1:
+        condition: service_started
+      gateway2:
+        condition: service_started
 
   mysql:
     image: mysql:8.0
@@ -29,9 +34,14 @@ services:
       - "3306:3306"
     environment:
       MYSQL_DATABASE: payment_gateway
-      MYSQL_ROOT_PASSWORD: root
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
     volumes:
       - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   gateway1:
     image: matheusprotzen/gateways-mock

@@ -10,19 +10,42 @@ API REST para gerenciar pagamentos multi-gateway com fallback por prioridade.
 - MySQL
 - Docker (opcional, para subir o ambiente completo)
 
-## Subindo com Docker
-```bash
-docker compose up -d
-docker compose exec app php artisan migrate:fresh --seed
-```
-
-## Subindo local (sem Docker)
+## Passo a passo (Local)
+1. Instalar dependencias:
 ```bash
 composer install
+```
+2. Criar o arquivo de ambiente:
+```bash
 cp .env.example .env
+```
+3. Ajustar `.env` para LOCAL (ver `.env.example` com blocos local/docker comentados).
+3. Gerar chave da aplicacao:
+```bash
 php artisan key:generate
-php artisan migrate --seed
+```
+4. Rodar migrations + seed:
+```bash
+php artisan migrate:fresh --seed
+```
+5. Subir a aplicacao:
+```bash
 php artisan serve
+```
+6. (Opcional) Subir os mocks dos gateways se estiver rodando local:
+```bash
+docker run -p 3001:3001 -p 3002:3002 matheusprotzen/gateways-mock
+```
+
+## Passo a passo (Docker)
+1. Subir todos os servicos:
+```bash
+docker compose up -d
+```
+2. Ajustar `.env` para DOCKER (ver `.env.example` com blocos local/docker comentados).
+3. Rodar migrations + seed dentro do container:
+```bash
+docker compose exec app php artisan migrate:fresh --seed
 ```
 
 ## Seed de teste
@@ -37,6 +60,20 @@ Rodar manualmente:
 ```bash
 php artisan db:seed
 ```
+
+## Testes Automatizados (TDD)
+Este projeto possui testes automatizados.
+
+**Rodando local:**
+```bash
+php artisan test
+```
+
+**Rodando no Docker:**
+```bash
+docker compose exec app php artisan test
+```
+
 
 ## Autenticacao
 Base URL (local): `http://localhost:8000/api`
@@ -134,9 +171,19 @@ Body:
 - `GET /transactions`
 - `GET /transactions/{id}`
 - `POST /transactions/{id}/refund`
+Body (reembolso):
+```json
+{}
+```
+Obs: rota de reembolso nao exige body, apenas o `id` na URL.
 
 #### Clients Refund
 - `POST /clients/purchases/{transaction_id}/refund`
+Body (reembolso):
+```json
+{}
+```
+Obs: rota de reembolso nao exige body, apenas o `transaction_id` na URL.
 
 #### Gateways
 - `PATCH /gateways/{id}/activate`
@@ -148,6 +195,7 @@ Body:
   "priority": 1
 }
 ```
+Obs: `activate` e `deactivate` nao exigem body.
 
 ## Gateways mock
 O compose ja sobe os mocks:
@@ -162,6 +210,15 @@ Variaveis de ambiente usadas:
 - `GATEWAY2_TOKEN`
 - `GATEWAY2_SECRET`
 
+## Arquitetura e Padroes
+**Arquitetura:** Controllers + Services + Requests (FormRequest) com middlewares e policies para controle de acesso.
+
+**Validacoes:** Todas as entradas sensiveis sao validadas em `FormRequest`, deixando os controllers focados apenas no fluxo.
+
+**Eloquent:** Models representam as entidades (Users, Clients, Products, Gateways, Transactions) e relacionamentos (transactions ↔ products).
+
+**Enums:** Status de transacao padronizado em `App\\TransactionStatus` (ex: `Pending`, `Paid`, `Failed`, `Refunded`).
+
 ## Postman
 Login:
 ![Requisicao de login](public/Requisicao-de-login.png)
@@ -174,3 +231,14 @@ Criacao de produto:
 
 Compra (transactions):
 ![Requisicao transactions](public/Requisicao-transactions.png)
+
+Compra (transactions - produto):
+![Requisicao transactions compra produto](public/Requisicao-transactions-compra-produto.png)
+
+Reembolso efetuado:
+![Requisicao reembolso efetuado](public/Requisicao-reembolso-efetuado.png)
+
+
+## ⏰ Considerações Finais
+- Tudo que foi construído está em funcionamento (compra, refund, gateways).
+- Dificuldade principal: gateway retornando 201 e o fluxo tratava como erro. Ajustado para aceitar 2xx.

@@ -65,7 +65,7 @@ class ClientsController extends Controller
 
         if ($result['status'] !== TransactionStatus::Refunded) {
             return response()->json([
-                'message' => $result['error'] ?? 'Refund failed',
+                'message' => $result['error'] ?? 'Reembolso da compra do cliente falhou',
             ], 502);
         }
 

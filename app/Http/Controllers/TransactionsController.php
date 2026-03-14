@@ -62,7 +62,7 @@ class TransactionsController extends Controller
 
             if ($paymentResult['status'] !== TransactionStatus::Paid) {
                 return [
-                    'error' => $paymentResult['error'] ?? 'Payment failed',
+                    'error' => $paymentResult['error'] ?? 'Falha ao processar o pagamento',
                 ];
             }
 
@@ -110,7 +110,7 @@ class TransactionsController extends Controller
 
         if ($result['status'] !== TransactionStatus::Refunded) {
             return response()->json([
-                'message' => $result['error'] ?? 'Refund failed',
+                'message' => $result['error'] ?? 'Falha ao processar o reembolso',
             ], 502);
         }
 

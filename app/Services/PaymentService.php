@@ -56,7 +56,7 @@ class PaymentService
 
         return [
             'status' => TransactionStatus::Failed,
-            'error' => 'All gateways failed',
+            'error' => 'Erro ao processar pagamento com todos os gateways disponíveis',
         ];
     }
 
@@ -74,7 +74,7 @@ class PaymentService
 
         return [
             'status' => TransactionStatus::Failed,
-            'error' => 'Refund failed',
+            'error' => 'Desculpe, ocorreu um erro ao processar o reembolso. Por favor, tente novamente mais tarde.',
         ];
     }
 
@@ -107,35 +107,33 @@ class PaymentService
     private function chargeGateway1(Client $client, int $amountInCents, string $cardNumber, string $cvv): array
     {
         $baseUrl = config('services.gateways.gateway1.url');
-        $login = Http::post($baseUrl . '/login', [
+        
+        $login = Http::asJson()->post($baseUrl . '/login', [
             'email' => config('services.gateways.gateway1.email'),
             'token' => config('services.gateways.gateway1.token'),
         ]);
 
-        if (!$login->ok()) {
+        if (!$login->ok() || !($token = $login->json('token'))) {
             return ['ok' => false];
         }
 
-        $token = $login->json('token');
-        if (!$token) {
-            return ['ok' => false];
-        }
-
-        $response = Http::withToken($token)->post($baseUrl . '/transactions', [
+        $response = Http::asJson()
+            ->withToken($token)
+            ->post($baseUrl . '/transactions', [
             'amount' => $amountInCents,
             'name' => $client->name,
             'email' => $client->email,
             'cardNumber' => $cardNumber,
-            'cvv' => $cvv,
+                'cvv' => $cvv,
         ]);
 
-        if (!$response->ok()) {
+        if (!$response->successful()) {
             return ['ok' => false];
         }
-
+        
         return [
             'ok' => true,
-            'external_id' => (string) ($response->json('id') ?? $response->json('transactionId') ?? Str::uuid()),
+            'external_id' => $response->json('id') ?? Str::uuid(),
         ];
     }
 
@@ -143,7 +141,7 @@ class PaymentService
     {
         $baseUrl = config('services.gateways.gateway2.url');
 
-        $response = Http::withHeaders([
+        $response = Http::asJson()->withHeaders([
             'Gateway-Auth-Token' => config('services.gateways.gateway2.token'),
             'Gateway-Auth-Secret' => config('services.gateways.gateway2.secret'),
         ])->post($baseUrl . '/transacoes', [
@@ -154,7 +152,7 @@ class PaymentService
             'cvv' => $cvv,
         ]);
 
-        if (!$response->ok()) {
+        if (!$response->successful()) {
             return ['ok' => false];
         }
 
@@ -183,7 +181,7 @@ class PaymentService
 
         $response = Http::withToken($token)->post($baseUrl . '/transactions/' . $externalId . '/charge_back');
 
-        return ['ok' => $response->ok()];
+        return ['ok' => $response->successful()];
     }
 
     private function refundGateway2(string $externalId): array
@@ -197,6 +195,6 @@ class PaymentService
             'id' => $externalId,
         ]);
 
-        return ['ok' => $response->ok()];
+        return ['ok' => $response->successful()];
     }
 }
